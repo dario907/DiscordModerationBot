@@ -1,23 +1,26 @@
 const { Client, GatewayIntentBits, SlashCommandBuilder, EmbedBuilder, PermissionsBitField, createAudioPlayer, createAudioResource, joinVoiceChannel, VoiceConnectionStatus, AudioReceiveStream } = require('discord.js');
-const { getVoiceConnection, entersState } = require('@discordjs/voice');
-const { SpeechClient } = require('@google-cloud/speech'); // Requires Google Cloud Speech-to-Text API
+// const { getVoiceConnection, entersState } = require('@discordjs/voice');
+// const { SpeechClient } = require('@google-cloud/speech'); // Requires Google Cloud Speech-to-Text API
 const fs = require('fs');
 const path = require('path');
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildVoiceStates, GatewayIntentBits.GuildMessageReactions] });
 
-const speechClient = new SpeechClient(); // Initialize Google Cloud Speech-to-Text client
+// const speechClient = new SpeechClient(); // Initialize Google Cloud Speech-to-Text client
 
 client.once('ready', async () => {
     const guild = client.guilds.cache.first();
     if (!guild) return console.error('No guild found.');
 
-    client.user.setPresence({
-        activities: [{ name: 'Made by AlbaniaGuy', type: 'PLAYING' }],
-        status: 'online',
-    });
-
-    console.log('Bot is online with status set.');
+    if (client.user) {
+        client.user.setPresence({
+            activities: [{ name: 'Made by AlbaniaGuy', type: 'PLAYING' }],
+            status: 'online',
+        });
+        console.log('Bot is online with status set.');
+    } else {
+        console.error('Client user is not ready.');
+    }
 
     const commands = [
         new SlashCommandBuilder().setName('ban').setDescription('Ban a user')
@@ -58,7 +61,7 @@ client.on('interactionCreate', async interaction => {
                     .setTitle('User Banned')
                     .setDescription(`${user.tag} has been banned.`)
                     .addFields({ name: 'Reason', value: reason })
-                    .setColor('RED');
+                    .setColor(0xff0000); // Use hexadecimal for red
                 await interaction.reply({ embeds: [embed] });
 
                 await user.send(`You have been banned from ${interaction.guild.name}. Reason: ${reason}`);
@@ -71,7 +74,7 @@ client.on('interactionCreate', async interaction => {
             const embed = new EmbedBuilder()
                 .setTitle('Ban Removed')
                 .setDescription(`Ban removed for user ID ${userId}.`)
-                .setColor('GREEN');
+                .setColor(0x00ff00); // Use hexadecimal for green
             await interaction.reply({ embeds: [embed] });
 
             const user = await client.users.fetch(userId);
@@ -85,7 +88,7 @@ client.on('interactionCreate', async interaction => {
                 const embed = new EmbedBuilder()
                     .setTitle('User Timed Out')
                     .setDescription(`${user.tag} has been timed out for ${duration} seconds.`)
-                    .setColor('ORANGE');
+                    .setColor(0xffa500); // Use hexadecimal for orange
                 await interaction.reply({ embeds: [embed] });
 
                 await user.send(`You have been timed out in ${interaction.guild.name} for ${duration} seconds.`);
@@ -100,7 +103,7 @@ client.on('interactionCreate', async interaction => {
                 const embed = new EmbedBuilder()
                     .setTitle('Timeout Removed')
                     .setDescription(`Timeout removed for ${user.tag}.`)
-                    .setColor('GREEN');
+                    .setColor(0x00ff00); // Use hexadecimal for green
                 await interaction.reply({ embeds: [embed] });
 
                 await user.send(`Your timeout has been removed in ${interaction.guild.name}.`);
@@ -115,7 +118,7 @@ client.on('interactionCreate', async interaction => {
                 const embed = new EmbedBuilder()
                     .setTitle('User Kicked')
                     .setDescription(`${user.tag} has been kicked.`)
-                    .setColor('RED');
+                    .setColor(0xff0000); // Use hexadecimal for red
                 await interaction.reply({ embeds: [embed] });
 
                 await user.send(`You have been kicked from ${interaction.guild.name}.`);
@@ -131,7 +134,7 @@ client.on('interactionCreate', async interaction => {
             const embed = new EmbedBuilder()
                 .setTitle('Messages Purged')
                 .setDescription(`${messages.size} messages have been deleted.`)
-                .setColor('BLUE');
+                .setColor(0x0000ff); // Use hexadecimal for blue
             await interaction.reply({ embeds: [embed], ephemeral: true });
         } else if (commandName === 'create-vc') {
             const vcName = options.getString('name');
@@ -174,7 +177,8 @@ client.on('interactionCreate', async interaction => {
     }
 });
 
-// Listen to voice channel events and transcribe
+// Listen to voice channel events and transcribe (Optional if you want it)
+/*
 client.on('voiceStateUpdate', async (oldState, newState) => {
     if (newState.channelId && !oldState.channelId) {
         const connection = joinVoiceChannel({
@@ -234,5 +238,6 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
         });
     }
 });
+*/
 
 client.login('YOUR_BOT_TOKEN');
