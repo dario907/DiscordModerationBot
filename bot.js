@@ -12,6 +12,13 @@ client.once('ready', async () => {
     const guild = client.guilds.cache.first();
     if (!guild) return console.error('No guild found.');
 
+    client.user.setPresence({
+        activities: [{ name: 'Made by AlbaniaGuy', type: 'PLAYING' }],
+        status: 'online',
+    });
+
+    console.log('Bot is online with status set.');
+
     const commands = [
         new SlashCommandBuilder().setName('ban').setDescription('Ban a user')
             .addUserOption(option => option.setName('user').setDescription('The user to ban').setRequired(true))
