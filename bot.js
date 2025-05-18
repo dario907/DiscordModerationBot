@@ -39,6 +39,18 @@ client.once('ready', async () => {
             .addIntegerOption(option => option.setName('amount').setDescription('Number of messages to delete').setRequired(true)),
         new SlashCommandBuilder().setName('create-vc').setDescription('Create a private voice channel')
             .addStringOption(option => option.setName('name').setDescription('Name of the private VC').setRequired(true)),
+        // Add anti-raid command
+        new SlashCommandBuilder().setName('anti-raid').setDescription('Enable or disable anti-raid emergency protection')
+            .addStringOption(option =>
+                option.setName('mode')
+                    .setDescription('lock or unlock all text channels')
+                    .setRequired(true)
+                    .addChoices(
+                        { name: 'lock', value: 'lock' },
+                        { name: 'unlock', value: 'unlock' }
+                    )
+            ),
+        new SlashCommandBuilder().setName('emergencyoff').setDescription('Disable all emergency protections and unlock all text channels'),
     ];
 
     await guild.commands.set(commands);
@@ -170,10 +182,128 @@ client.on('interactionCreate', async interaction => {
                     }
                 }
             });
+        } else if (commandName === 'anti-raid') {
+            const mode = options.getString('mode');
+            const guild = interaction.guild;
+            const everyoneRole = guild.roles.everyone;
+            let changedChannels = 0;
+
+            for (const channel of guild.channels.cache.values()) {
+                if (channel.type === 0) {
+                    if (mode === 'lock') {
+                        await channel.permissionOverwrites.edit(everyoneRole, { SendMessages: false }).catch(() => {});
+                        changedChannels++;
+                    } else if (mode === 'unlock') {
+                        await channel.permissionOverwrites.edit(everyoneRole, { SendMessages: null }).catch(() => {});
+                        changedChannels++;
+                    }
+                }
+            }
+
+            const embed = new EmbedBuilder()
+                .setTitle('Anti-Raid Protection')
+                .setDescription(mode === 'lock'
+                    ? `🔒 All text channels have been locked for @everyone.`
+                    : `🔓 All text channels have been unlocked for @everyone.`)
+                .addFields({ name: 'Affected Channels', value: `${changedChannels}` })
+                .setColor(mode === 'lock' ? 0xff0000 : 0x00ff00);
+
+            await interaction.reply({ embeds: [embed] });
+        } else if (commandName === 'emergencyoff') {
+            const guild = interaction.guild;
+            const everyoneRole = guild.roles.everyone;
+            let changedChannels = 0;
+
+            for (const channel of guild.channels.cache.values()) {
+                if (channel.type === 0) {
+                    await channel.permissionOverwrites.edit(everyoneRole, { SendMessages: null }).catch(() => {});
+                    changedChannels++;
+                }
+            }
+
+            const embed = new EmbedBuilder()
+                .setTitle('Emergency Mode Disabled')
+                .setDescription('🔓 All text channels have been unlocked for @everyone. Emergency protections are now off.')
+                .addFields({ name: 'Affected Channels', value: `${changedChannels}` })
+                .setColor(0x00ff00);
+
+            await interaction.reply({ embeds: [embed] });
         }
     } catch (error) {
         console.error(error);
         await interaction.reply('An error occurred while executing the command.');
+    }
+});
+
+// --- Anti-spam, fake link, and attack detection ---
+const SPAM_THRESHOLD = 5;
+const SPAM_INTERVAL = 7000;
+const spamMap = new Map();
+
+const FAKE_LINK_REGEX = /(discord\.gift|free-nitro|airdrop|nitro.*\.com|discordapp\.net|discord-\w+\.com|bit\.ly|tinyurl\.com|grabify\.link|phishing|steamcommunnity|steamnity|steampowered|steamcommunity\.pw|steamcomminuty|steamcornmunity|steamcormmunity|steamcommunnity|steamcommunitiy|steamcommunit)/i;
+const MASS_MENTION_REGEX = /@everyone|@here/;
+
+async function logIncident(guild, description, details) {
+    const logChannel = guild.channels.cache.find(ch => ch.name === 'mod-logs' && ch.type === 0);
+    if (logChannel) {
+        await logChannel.send({ embeds: [
+            {
+                title: '🚨 Moderation Alert',
+                description,
+                color: 0xff0000,
+                fields: details ? Object.entries(details).map(([name, value]) => ({ name, value: String(value) })) : [],
+                timestamp: new Date().toISOString()
+            }
+        ]});
+    }
+}
+
+client.on('messageCreate', async message => {
+    if (message.author.bot) return;
+
+    // --- Spam detection ---
+    const now = Date.now();
+    const userId = message.author.id;
+    if (!spamMap.has(userId)) {
+        spamMap.set(userId, []);
+    }
+    const timestamps = spamMap.get(userId);
+    timestamps.push(now);
+    // Remove old timestamps
+    while (timestamps.length && now - timestamps[0] > SPAM_INTERVAL) {
+        timestamps.shift();
+    }
+    if (timestamps.length >= SPAM_THRESHOLD) {
+        await logIncident(message.guild, `Spam detected from ${message.author.tag}`, {
+            'User': `<@${userId}>`,
+            'Channel': `<#${message.channel.id}>`,
+            'Content': message.content
+        });
+        // Optionally, take action (mute, kick, etc.)
+        // await message.member.timeout(60_000, 'Spam detected');
+        // Optionally, delete spam messages
+        // await message.delete();
+    }
+
+    // --- Fake link detection ---
+    if (FAKE_LINK_REGEX.test(message.content)) {
+        await logIncident(message.guild, `Suspicious link detected from ${message.author.tag}`, {
+            'User': `<@${userId}>`,
+            'Channel': `<#${message.channel.id}>`,
+            'Content': message.content
+        });
+        // Optionally, delete the message
+        // await message.delete();
+    }
+
+    // --- Mass mention detection ---
+    if (MASS_MENTION_REGEX.test(message.content)) {
+        await logIncident(message.guild, `Mass mention detected from ${message.author.tag}`, {
+            'User': `<@${userId}>`,
+            'Channel': `<#${message.channel.id}>`,
+            'Content': message.content
+        });
+        // Optionally, take action
     }
 });
 
