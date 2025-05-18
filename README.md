@@ -1,6 +1,6 @@
 # Discord Moderation Bot
 
-A powerful Discord bot for server moderation and utility features.
+A powerful Discord bot for server moderation, anti-raid, and utility features.
 
 ## Features
 
@@ -16,6 +16,16 @@ A powerful Discord bot for server moderation and utility features.
 - **/create-vc**: Create a private voice channel with a custom name.
   - Only the creator can manage the channel.
   - The channel is automatically deleted when the creator leaves and no one else is in the channel.
+
+### Anti-Raid & Emergency Protection
+- **/anti-raid**: Instantly lock or unlock all text channels for @everyone in case of a raid or attack.
+- **/emergencyoff**: Instantly unlock all text channels and disable emergency protections.
+
+### Automated Moderation & Logging
+- **Spam Detection**: Detects users sending too many messages in a short time and logs incidents.
+- **Fake Link Detection**: Detects and logs suspicious or phishing links.
+- **Mass Mention Detection**: Detects and logs mass mentions (e.g., @everyone, @here).
+- **Incident Logging**: All incidents are logged to a channel named `mod-logs`.
 
 ### Voice Channel Transcription
 - The bot listens to voice channels and transcribes everything said in real-time.
@@ -37,7 +47,7 @@ All commands are implemented as Discord slash commands for ease of use.
    npm install
    ```
 
-3. Set up Google Cloud Speech-to-Text API:
+3. Set up Google Cloud Speech-to-Text API (for voice transcription):
    - Enable the API in your Google Cloud project.
    - Download the service account key and set the `GOOGLE_APPLICATION_CREDENTIALS` environment variable to its path.
 
@@ -58,11 +68,12 @@ All commands are implemented as Discord slash commands for ease of use.
   - Speak
   - Read Message History
 - Create a text channel named `voice-logs` for voice transcription logs.
+- Create a text channel named `mod-logs` for moderation and anti-raid incident logs.
 
 ## Future Improvements
 - Add more customization options for private voice channels.
 - Enhance transcription accuracy with additional language support.
-- Add logging for moderation actions in a dedicated channel.
+- Add more automated moderation actions (auto-mute, auto-ban, etc.).
 
 ## License
 
